@@ -28,10 +28,6 @@ A command-line interface (CLI) tool to interact with the EmailSpam.Pro API for t
 2. Follow the prompts to enter required information.
 3. View the results and follow instructions provided.
 
-## Contributors
-
-- [Your Name](https://github.com/PoppingXanax)
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
