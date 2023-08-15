@@ -20,7 +20,7 @@ A command-line interface (CLI) tool to interact with the EmailSpam.Pro API for t
 1. Clone this repository to your local machine.
 2. Install the required libraries using `pip install -r requirements.txt`.
 3. Open a terminal in the repository directory.
-4. Run the script: `python send_email_cli.py`.
+4. Run the script: `python main.py`.
 
 ## Usage
 
