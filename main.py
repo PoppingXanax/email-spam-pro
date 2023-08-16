@@ -1,4 +1,6 @@
+import os
 import requests
+from datetime import datetime
 from colorama import Fore, Style
 
 RED = Fore.LIGHTRED_EX
@@ -6,37 +8,113 @@ GREEN = Fore.LIGHTGREEN_EX
 YELLOW = Fore.LIGHTYELLOW_EX
 RESET = Fore.RESET
 
-API_KEY = 'KEY'  # Replace with your actual API key
 
-def listMenu():
-    print(f'[{GREEN}1{RESET}] {GREEN}Check Credits{RESET}')
+API_KEY = ''  # Replace with your actual API key
+ONLINE_CHECK = 'https://emailspam.pro/'
+
+def checkAPIKeyValidity(api_key):
+    url = f"https://emailspam.pro/api?apikey={api_key}&action=getCredits"
+    
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if 'requestStatus' in data and data['requestStatus'] == 0:
+                    return False  # Invalid API key
+                else:
+                    return True  # Valid API key or other response
+            except ValueError:
+                return False  # Invalid API key if response is not valid JSON
+        else:
+            return False  # Invalid API key if there's an issue with the check
+    except requests.exceptions.RequestException:
+        return False  # Invalid API key if there's a network error
+
+
+def checkAPIKey():
+    if not os.path.exists('key.txt'):
+        print(f"{RED}~ API Key file 'key.txt' does not exist. Please set a valid key in the tool to create it.{RESET}")
+        exit()
+    else:
+        with open('key.txt', 'r') as key_file:
+            api_key = key_file.read().strip()
+            if len(api_key) == 0:
+                print(f"{RED}~ API Key is blank. Please set a valid key in the tool to set it.{RESET}")
+                exit()
+            elif not checkAPIKeyValidity(api_key):
+                print(f"{RED}~ Invalid API Key found in 'key.txt'. Please set a valid key in the tool to set it.{RESET}")
+                exit()
+            else:
+                return api_key
+
+def isOnline():
+    check = requests.get(ONLINE_CHECK)
+    if check.status_code == 200:
+        print(f"{GREEN}~ {RESET}Server {GREEN}ONLINE{RESET}{GREEN}{RESET} ~{RESET}")
+    else:
+        print(f"{RED}~ {RESET}Server {RED}ONLINE{RESET}{RED}{RESET} ~{RESET}")
+
+def setAPIKey():
+    if not os.path.exists('key.txt'):
+        while True:
+            setKey = input(f"{GREEN}~{RESET} Enter your API Key: ")
+            if len(setKey) == 40:
+                if checkAPIKeyValidity(setKey):
+                    print(f"{GREEN}~{RESET} API Key Set{GREEN} Successfully{RESET}")
+                    with open('key.txt', 'w') as key_file:
+                        key_file.write(setKey)  # Write the API key to the file
+                    break  # Exit the loop if the input is valid
+                else:
+                    print(f"{RED}~ Invalid API Key. Please try again.")
+            elif len(setKey) == 0:
+                print(f"{RED}~ API Key cannot be blank. Please try again.")
+            else:
+                print(f"{RED}~ API Key must be exactly 40 characters. Please try again.")
+    else:
+        api_key = checkAPIKey()  # Check the API key in key.txt
+        if not checkAPIKeyValidity(api_key):
+            print(f"{RED}~ Invalid API Key found in 'key.txt'. Please run setAPIKey to set a valid key.{RESET}")
+
+
+def menu():
+    print(f"{GREEN}=>{RESET} send-email.com CLI | V1 {GREEN}<={RESET}")
+    isOnline()
+
+    api_key = checkAPIKey()  # Check if API key exists and is valid
+
+    print('---------------')
+    if checkAPIKeyValidity(api_key):
+        print(f"{GREEN}API Key: Valid{RESET}")
+    else:
+        print(f"{RED}API Key: Invalid{RESET}")
+    print('---------------')
+    print(f'[{GREEN}+{RESET}]{GREEN} Set API Key{RESET}')
+    print('---------------')
+    print(f'[{GREEN}1{RESET}]{GREEN} Check Credits{RESET}')
     print(f'[{GREEN}2{RESET}] {GREEN}Create Task{RESET}')
     print(f'[{GREEN}3{RESET}] {GREEN}Check Task Status{RESET}')
     print(f'[{GREEN}4{RESET}] {GREEN}Stop Task{RESET}')
     print(f'[{GREEN}0{RESET}] {GREEN}Exit{RESET}')
 
-def menu():
-    print(f"{GREEN}=>{RESET} EmailSpam.Pro CLI | V1 {GREEN}<={RESET}")
-    listMenu()
-    
     while True:
         chooseOption = input(f"{GREEN}~{RESET} Enter an option: ")
         
         if chooseOption == '1':
-            credit_amount = getCreditAmount()
+            credit_amount = getCreditAmount(api_key)
             print(credit_amount)
         elif chooseOption == '2':
             target_email = input(f"{GREEN}~{RESET} Enter the target email: ")
             amount = input(f"{GREEN}~{RESET} Enter the amount: ")
-            create_task_response = createTask(target_email, amount)
+            create_task_response = createTask(api_key, target_email, amount)
             print(create_task_response)
         elif chooseOption == '3':
             task_id = input(f"{GREEN}~{RESET} Enter the task ID: ")
-            task_status = checkTaskStatus(task_id)
+            task_status = checkTaskStatus(api_key, task_id)
             print(task_status)
         elif chooseOption == '4':
             task_id = input(f"{GREEN}~{RESET} Enter the task ID: ")
-            stop_task_response = stopTask(task_id)
+            stop_task_response = stopTask(api_key, task_id)
             print(stop_task_response)
         elif chooseOption == '0':
             print(f"{GREEN}~{RESET} Exiting the program.")
@@ -44,8 +122,8 @@ def menu():
         else:
             print(f"{RED}~ Invalid option!{RESET}")
 
-def getCreditAmount():
-    url = f"https://emailspam.pro/api?apikey={API_KEY}&action=getCredits"
+def getCreditAmount(api_key):
+    url = f"https://emailspam.pro/api?apikey={api_key}&action=getCredits"
     response = requests.get(url)
     
     if response.status_code == 200:
@@ -58,10 +136,8 @@ def getCreditAmount():
     else:
         return f"{RED}{GREEN}~ Failed to fetch data. Status code: {response.status_code}"
 
-from datetime import datetime
-
-def createTask(target_email, amount):
-    url = f"https://emailspam.pro/api?apikey={API_KEY}&action=createTask&email={target_email}&amount={amount}"
+def createTask(api_key, target_email, amount):
+    url = f"https://emailspam.pro/api?apikey={api_key}&action=createTask&email={target_email}&amount={amount}"
     response = requests.get(url)
     
     if response.status_code == 200:
@@ -82,8 +158,8 @@ def createTask(target_email, amount):
     else:
         return f"{RED}~ Failed to create task. Status code: {response.status_code}{RESET}"
 
-def checkTaskStatus(task_id):
-    url = f"https://emailspam.pro/api?apikey={API_KEY}&action=checkTask&id={task_id}"
+def checkTaskStatus(api_key, task_id):
+    url = f"https://emailspam.pro/api?apikey={api_key}&action=checkTask&id={task_id}"
     response = requests.get(url)
     
     if response.status_code == 200:
@@ -110,9 +186,8 @@ def checkTaskStatus(task_id):
     else:
         return f"{RED}~ Failed to check task status. Status code: {response.status_code}{RESET}"
 
-
-def stopTask(task_id):
-    url = f"https://emailspam.pro/api?apikey={API_KEY}&action=stopTask&id={task_id}"
+def stopTask(api_key, task_id):
+    url = f"https://emailspam.pro/api?apikey={api_key}&action=stopTask&id={task_id}"
     response = requests.get(url)
     
     if response.status_code == 200:
@@ -126,5 +201,6 @@ def stopTask(task_id):
     else:
         return f"{RED}~ Failed to stop task. Status code: {response.status_code}{RESET}"
 
-menu()
+# Call the menu function
 # by PoppingXanax
+menu()
